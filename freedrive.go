@@ -36,7 +36,12 @@ func (fd *FreeDrive) Run() {
 				Name:  "download",
 				Usage: "下载文件",
 				Action: func(c *cli.Context) error {
-					fmt.Println("url: ", c.Args().First())
+					url := c.Args().First()
+					err := fd.Download(url)
+					if err != nil {
+						fmt.Printf("%s,请重新输入\n", err)
+					}
+
 					return nil
 				},
 			},
