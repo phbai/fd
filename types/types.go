@@ -1,7 +1,7 @@
 package types
 
 type Block struct {
-	Size uint64 `json:"size"`
+	Size int64 `json:"size"`
 	Url string `json:"url"`
 	Sha1 string `json:"sha1"`
 }
@@ -9,7 +9,7 @@ type Block struct {
 type Metadata struct {
 	Time uint64 `json:"time"`
 	Filename string `json:"filename"`
-	Size uint64 `json:"size"`
+	Size int64 `json:"size"`
 	Sha1 string `json:"sha1"`
-	Block []Block `json:"block"`
+	Blocks []Block `json:"block"`
 }

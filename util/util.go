@@ -8,6 +8,10 @@ import (
 	"net/http"
 	"regexp"
 	"time"
+	"log"
+	"crypto/sha1"
+	"os"
+	"io"
 
 	"github.com/phbai/FreeDrive/types"
 )
@@ -18,7 +22,7 @@ func FormatTime(timestamp uint64) string {
 	return tm.In(cstZone).Format("2006-01-02 15:04:05")
 }
 
-func FormatSize(filesize uint64) string {
+func FormatSize(filesize int64) string {
 	var unit = [7]string{"B", "KB", "MB", "GB", "TB", "PB", "ZB"}
 	var size = float64(filesize)
 	count := 0
@@ -62,11 +66,25 @@ func GetMetadata(url string) (error, types.Metadata) {
 	return nil, metadata
 }
 
-func GetOffset(blocks []types.Block, index uint64) uint64 {
-	var i, offset uint64 = 0, 0
-	i, offset = 0, 0
-	for ; i < index; i++ {
+func GetOffset(blocks []types.Block, index uint64) int64 {
+	var i, offset int64 = 0, 0
+	for ; i < int64(index); i++ {
 		offset += blocks[i].Size
 	}
 	return offset
+}
+
+func CalculateSha1(filename string) string {
+	f, err := os.Open(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	h := sha1.New()
+	if _, err := io.Copy(h, f); err != nil {
+		log.Fatal(err)
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil));
 }
