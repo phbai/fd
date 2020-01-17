@@ -93,8 +93,9 @@ func (ac *AcDrive) Download(url string) error {
 	return nil
 }
 
-func (ac *AcDrive) Login(username string, password string) {
-	fmt.Println("Login")
+func (ac *AcDrive) Login(username string, password string) error {
+	fmt.Printf("username = %s, password = %s\n", username, password)
+	return nil;
 }
 
 func (ac *AcDrive) Info(url string) error {

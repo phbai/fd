@@ -20,7 +20,13 @@ func (fd *FreeDrive) Run() {
 				Name:  "login",
 				Usage: "登录账户",
 				Action: func(c *cli.Context) error {
-					fmt.Println("added task: ", c.Args().First())
+					username := c.Args().First();
+					password := c.Args().Get(1);
+					err := fd.Login(username, password)
+					if err != nil {
+						fmt.Printf("%s,请重新输入\n", err)
+					}
+
 					return nil
 				},
 			},
