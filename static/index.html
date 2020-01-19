@@ -11,7 +11,7 @@
       <input id="urlInput" />
       <input id="play" type="button" value="播放" />
     </div>
-    <video id="video" controls></video>
+    <video id="video" controls muted></video>
 
     <script>
       var playButton = document.getElementById("play");
@@ -28,6 +28,8 @@
         var mediaSource = new MediaSource(); // 创建mediaSource实例
         videoMp4.src = URL.createObjectURL(mediaSource); // 将mediasource实例关联到video元素上
         mediaSource.addEventListener("sourceopen", sourceOpen);
+
+        
       } else {
         console.log("The Media Source Extensions API is not supported.");
       }
@@ -36,15 +38,16 @@
         URL.revokeObjectURL(videoMp4.src);
 
         // 设置：媒体的编码类型
-        var mime = 'video/webm; codecs="vorbis, vp8"';
+        var mime = 'video/mp4; codecs="avc1.4D401F"';
 
         var mediaSource = e.target;
 
+        mediaSource.duration = 6;
         var sourceBuffer = mediaSource.addSourceBuffer(mime); // 创建sourcebuffer实例，用于存放媒体数据
 
         // var videoUrl = "./avegers3.webm";
         var videoUrl =
-          "https://imgs.aixifan.com/bfs/album/5d4b25c5e6837dd8a560cf97e261851744e0880c.bmp";
+          "https://imgs.aixifan.com/bfs/album/85f499887ed2379d17564c98ce9361e4ef7991b6.bmp";
 
         fetch(videoUrl) // 异步获取视频数据
           .then(function(response) {
@@ -64,7 +67,7 @@
                     // 数据已经ready完毕，可以播放了
                   })
                   .catch(function(err) {
-                    console.log("err: ", err);
+                    console.log("play err: ", err);
                   });
               }
             });

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div>
+      <input id="urlInput" />
+      <input id="play" type="button" value="播放" />
+    </div>
+    <video id="video" controls muted></video>
+
+    <script>
+      var queue = [];
+
+      // Check that browser has support for media codec
+      var mimeCodec = 'video/mp4; codecs="avc1.4D401F"';
+      console.log(MediaSource.isTypeSupported(mimeCodec));
+
+      // Create Media Source
+      var mediaSource = new MediaSource(); // mediaSource.readyState === 'closed'
+
+      // Get video element
+      var video = document.querySelector('video');
+
+      // Attach media source to video element
+      video.src = URL.createObjectURL(mediaSource);
+
+      // Wait for media source to be open
+      mediaSource.addEventListener('sourceopen', handleSourceOpen.bind(mediaSource));
+
+      function handleSourceOpen() {
+        var mediaSource = this; // mediaSource.readyState === 'open'
+        var sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
+
+        queue.push("https://imgs.aixifan.com/bfs/album/f1b38e870a90c53837e9ea1a35de4fa2fc45c3f6.bmp");
+        queue.push("https://imgs.aixifan.com/bfs/album/7db1f84d08b16e5772841797ac90097bb06ba61a.bmp");
+        queue.push("https://imgs.aixifan.com/bfs/album/5c2f1c2b244e663a4b5a74fb6e9053d68b30b839.bmp");
+
+        mediaSource.duration = 6; // (51200 + 25600) / 12800
+
+        // Fetch init segment (contains mp4 header)
+        fetchSegmentAndAppend("https://imgs.aixifan.com/bfs/album/85f499887ed2379d17564c98ce9361e4ef7991b6.bmp", sourceBuffer, function() {
+
+          function iter() {
+
+            // Pop segment from queue
+            url = queue.shift();
+            if (url === undefined) {
+              return;
+            }
+
+            // Download segment and append to source buffer
+            fetchSegmentAndAppend(url, sourceBuffer, function(err) {
+              if (err) {
+                console.error(err);
+              } else {
+                setTimeout(iter, 200);
+              }
+            });
+          }
+          iter();
+          video.play();
+        });
+      }
+
+      function fetchSegmentAndAppend(segmentUrl, sourceBuffer, callback) {
+        fetchArrayBuffer(segmentUrl, function(buf) {
+          console.log('buf: ', buf);
+          sourceBuffer.addEventListener('updateend', function(ev) {
+            callback();
+          });
+          sourceBuffer.addEventListener('error', function(ev) {
+            callback(ev);
+          });
+          sourceBuffer.appendBuffer(buf.slice(62));
+        });
+      }
+
+      function fetchArrayBuffer(url, callback) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('get', url);
+        xhr.responseType = 'arraybuffer';
+        xhr.onload = function() {
+          callback(xhr.response);
+        };
+        xhr.send();
+      }
+    </script>
+  </body>
+</html>
