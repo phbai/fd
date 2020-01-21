@@ -34,7 +34,12 @@ func (fd *FreeDrive) Run() {
 				Name:  "upload",
 				Usage: "上传文件",
 				Action: func(c *cli.Context) error {
-					fmt.Println("completed task: ", c.Args().First())
+					filename := c.Args().First()
+					err := fd.Upload(filename)
+					if err != nil {
+						fmt.Printf("%s,请重新输入\n", err)
+					}
+
 					return nil
 				},
 			},

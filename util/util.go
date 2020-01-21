@@ -76,10 +76,11 @@ func GetOffset(blocks []types.Block, index uint64) int64 {
 
 func CalculateSha1(filename string) string {
 	f, err := os.Open(filename)
+	defer f.Close()
+
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
 
 	h := sha1.New()
 	if _, err := io.Copy(h, f); err != nil {

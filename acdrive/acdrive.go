@@ -6,6 +6,12 @@ import (
 	"sync"
 	"time"
 	"log"
+	"strings"
+	"net/http"
+	"net/url"
+	"encoding/json"
+	"io/ioutil"
+	"encoding/base64"
 
 	"github.com/phbai/FreeDrive/util"
 	"github.com/phbai/FreeDrive/types"
@@ -36,8 +42,13 @@ func downloadBlock(blocks []types.Block, index int, file *os.File, isOccupied ch
 	return nil
 }
 
-func (ac *AcDrive) Upload(filename string) {
-	fmt.Println("Upload")
+func (ac *AcDrive) Upload(filename string) error {
+	err, token := GetUpToken()
+	if err != nil {
+		return err;
+	}
+	log.Println("upToken:", token)
+	return nil
 }
 
 func (ac *AcDrive) Download(url string) error {
@@ -94,8 +105,43 @@ func (ac *AcDrive) Download(url string) error {
 }
 
 func (ac *AcDrive) Login(username string, password string) error {
-	fmt.Printf("username = %s, password = %s\n", username, password)
-	return nil;
+	data := url.Values{}
+	data.Set("username", username)
+	data.Set("password", password)
+	data.Set("key", "")
+	data.Set("captcha", "")
+	
+	response, err := http.PostForm("https://id.app.acfun.cn/rest/web/login/signin", data)
+
+	if err != nil {
+		return err
+	}
+
+	defer response.Body.Close()
+
+	cookies := response.Cookies()
+
+	cookie := types.AcfunLoginCookie {
+		AcPasstoken: cookies[0].Value,
+		AuthKey: cookies[1].Value,
+		AcUsername: cookies[2].Value,
+		AcPostHint: cookies[3].Value,
+		AcUserImg: cookies[4].Value,
+	}
+
+	res, err := json.MarshalIndent(cookie, "", "  ")
+
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile("cookies.json", res, 0644)
+	if err != nil {
+		return err
+	}
+
+	log.Println("登录成功");
+	return nil
 }
 
 func (ac *AcDrive) Info(url string) error {
