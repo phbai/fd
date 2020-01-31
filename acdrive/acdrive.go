@@ -1,20 +1,19 @@
 package acdrive
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"net/url"
 	"os"
 	"sync"
 	"time"
-	"log"
-	"strings"
-	"net/http"
-	"net/url"
-	"encoding/json"
-	"io/ioutil"
-	"encoding/base64"
 
-	"github.com/phbai/FreeDrive/util"
 	"github.com/phbai/FreeDrive/types"
+	"github.com/phbai/FreeDrive/util"
 )
 
 type AcDrive struct {
@@ -37,22 +36,40 @@ func downloadBlock(blocks []types.Block, index int, file *os.File, isOccupied ch
 	_, err = file.WriteAt(content, int64(offset))
 
 	<-isOccupied
-	log.Printf("分块%d/%d下载完毕\n", index + 1, len(blocks))
+	log.Printf("分块%d/%d下载完毕\n", index+1, len(blocks))
 	wg.Done()
 	return nil
 }
 
 func (ac *AcDrive) Upload(filename string) error {
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		return errors.New(filename + "文件不存在")
+	}
+
 	err, token := GetUpToken()
 	if err != nil {
-		return err;
+		return err
 	}
 	log.Println("upToken:", token)
+
+	params := &types.AcfunUploadImageRequest{
+		Token: token,
+		Id:    "WU_FILE_0",
+		Name:  filename,
+		Type:  "image/jpg",
+		Size:  "182156",
+		Key:   "bfs/album/121d736f4b3aa42cb0cc5fd1ce53001a39e5b84w.jpg",
+	}
+	err = UploadImage(params)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
 	return nil
 }
 
 func (ac *AcDrive) Download(url string) error {
-	mutex := sync.Mutex{};
+	mutex := sync.Mutex{}
 	err, metadata := util.GetMetadata(url)
 
 	if err != nil {
@@ -61,9 +78,9 @@ func (ac *AcDrive) Download(url string) error {
 
 	path := fmt.Sprintf("%s", metadata.Filename)
 	if stat, err := os.Stat(path); err == nil {
-		existFileHash := util.CalculateSha1(metadata.Filename);
+		existFileHash := util.CalculateSha1(metadata.Filename)
 		if existFileHash == metadata.Sha1 && stat.Size() == metadata.Size {
-			log.Println("文件已存在, 且与服务器端内容一致");
+			log.Println("文件已存在, 且与服务器端内容一致")
 			return nil
 		}
 	}
@@ -94,12 +111,12 @@ func (ac *AcDrive) Download(url string) error {
 	speed := float64(metadata.Size) / float64(timeElapsed)
 	log.Printf("%s (%s) 下载完毕, 用时%.2f秒, 平均速度%s/s\n", metadata.Filename, util.FormatSize(metadata.Size), timeElapsed, util.FormatSize(int64(speed)))
 
-	newHash := util.CalculateSha1(metadata.Filename);
+	newHash := util.CalculateSha1(metadata.Filename)
 
 	if newHash == metadata.Sha1 {
-		log.Println("文件校验通过");
+		log.Println("文件校验通过")
 	} else {
-		log.Println("文件校验未通过");
+		log.Println("文件校验未通过")
 	}
 	return nil
 }
@@ -110,7 +127,7 @@ func (ac *AcDrive) Login(username string, password string) error {
 	data.Set("password", password)
 	data.Set("key", "")
 	data.Set("captcha", "")
-	
+
 	response, err := http.PostForm("https://id.app.acfun.cn/rest/web/login/signin", data)
 
 	if err != nil {
@@ -121,12 +138,12 @@ func (ac *AcDrive) Login(username string, password string) error {
 
 	cookies := response.Cookies()
 
-	cookie := types.AcfunLoginCookie {
+	cookie := types.AcfunLoginCookie{
 		AcPasstoken: cookies[0].Value,
-		AuthKey: cookies[1].Value,
-		AcUsername: cookies[2].Value,
-		AcPostHint: cookies[3].Value,
-		AcUserImg: cookies[4].Value,
+		AuthKey:     cookies[1].Value,
+		AcUsername:  cookies[2].Value,
+		AcPostHint:  cookies[3].Value,
+		AcUserImg:   cookies[4].Value,
 	}
 
 	res, err := json.MarshalIndent(cookie, "", "  ")
@@ -140,7 +157,7 @@ func (ac *AcDrive) Login(username string, password string) error {
 		return err
 	}
 
-	log.Println("登录成功");
+	log.Println("登录成功")
 	return nil
 }
 
