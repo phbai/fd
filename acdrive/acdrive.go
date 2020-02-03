@@ -50,21 +50,76 @@ func (ac *AcDrive) Upload(filename string) error {
 	if err != nil {
 		return err
 	}
-	log.Println("upToken:", token)
+
+	_, fileSize := GetFileSize(filename)
+	blocks, err := ReadChunks(filename)
+
+	var blockMetadatas []types.Block
+
+	if err != nil {
+		return err
+	}
+
+	for index, block := range blocks {
+		fullBlock := append(BlockHeader(block), block...)
+		blockSha1 := util.CalculateBlockSha1(block)
+		fullBlockSha1 := util.CalculateBlockSha1(fullBlock)
+
+		params := &types.AcfunUploadImageRequest{
+			Token: token,
+			Id:    "WU_FILE_0",
+			Name:  fmt.Sprintf("%s.bmp", fullBlockSha1),
+			Type:  "image/bmp",
+			Size:  fmt.Sprintf("%d", len(fullBlock)),
+			Key:   fmt.Sprintf("bfs/album/%s.bmp", fullBlockSha1),
+		}
+
+		err, url := UploadBlock(params, fullBlock)
+		if err != nil {
+			return err
+		}
+
+		blockMetadata := types.Block{
+			Size: int64(len(block)),
+			Url:  url,
+			Sha1: blockSha1,
+		}
+
+		blockMetadatas = append(blockMetadatas, blockMetadata)
+
+		fmt.Printf("分片%d上传成功\n", index+1)
+	}
+
+	now := time.Now()
+
+	metadata := types.Metadata{
+		Time:     uint64(now.Unix()),
+		Filename: filename,
+		Size:     fileSize,
+		Sha1:     util.CalculateFileSha1(filename),
+		Blocks:   blockMetadatas,
+	}
+
+	metadataBytes, _ := json.Marshal(metadata)
+
+	fullMetadataBlock := append(BlockHeader(metadataBytes), metadataBytes...)
+	fullMetadataBlockSha1 := util.CalculateBlockSha1(fullMetadataBlock)
 
 	params := &types.AcfunUploadImageRequest{
 		Token: token,
 		Id:    "WU_FILE_0",
-		Name:  filename,
-		Type:  "image/jpg",
-		Size:  "182156",
-		Key:   "bfs/album/121d736f4b3aa42cb0cc5fd1ce53001a39e5b84w.jpg",
+		Name:  fmt.Sprintf("%s.bmp", fullMetadataBlockSha1),
+		Type:  "image/bmp",
+		Size:  fmt.Sprintf("%d", len(fullMetadataBlock)),
+		Key:   fmt.Sprintf("bfs/album/%s.bmp", fullMetadataBlockSha1),
 	}
-	err = UploadImage(params)
+
+	err, url := UploadBlock(params, fullMetadataBlock)
 	if err != nil {
-		log.Println(err)
-		return err
+		return errors.New(fmt.Sprintf("元数据上传失败: %s", err))
 	}
+
+	fmt.Printf("上传成功，链接👉 %s\n", FormatUrl(url))
 	return nil
 }
 
@@ -78,7 +133,7 @@ func (ac *AcDrive) Download(url string) error {
 
 	path := fmt.Sprintf("%s", metadata.Filename)
 	if stat, err := os.Stat(path); err == nil {
-		existFileHash := util.CalculateSha1(metadata.Filename)
+		existFileHash := util.CalculateFileSha1(metadata.Filename)
 		if existFileHash == metadata.Sha1 && stat.Size() == metadata.Size {
 			log.Println("文件已存在, 且与服务器端内容一致")
 			return nil
@@ -111,7 +166,7 @@ func (ac *AcDrive) Download(url string) error {
 	speed := float64(metadata.Size) / float64(timeElapsed)
 	log.Printf("%s (%s) 下载完毕, 用时%.2f秒, 平均速度%s/s\n", metadata.Filename, util.FormatSize(metadata.Size), timeElapsed, util.FormatSize(int64(speed)))
 
-	newHash := util.CalculateSha1(metadata.Filename)
+	newHash := util.CalculateFileSha1(metadata.Filename)
 
 	if newHash == metadata.Sha1 {
 		log.Println("文件校验通过")

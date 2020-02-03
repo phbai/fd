@@ -1,17 +1,18 @@
 package util
 
 import (
+	"bytes"
+	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"time"
-	"log"
-	"crypto/sha1"
-	"os"
-	"io"
 
 	"github.com/phbai/FreeDrive/types"
 )
@@ -74,7 +75,7 @@ func GetOffset(blocks []types.Block, index uint64) int64 {
 	return offset
 }
 
-func CalculateSha1(filename string) string {
+func CalculateFileSha1(filename string) string {
 	f, err := os.Open(filename)
 	defer f.Close()
 
@@ -87,5 +88,14 @@ func CalculateSha1(filename string) string {
 		log.Fatal(err)
 	}
 
-	return fmt.Sprintf("%x", h.Sum(nil));
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func CalculateBlockSha1(block []byte) string {
+	h := sha1.New()
+	if _, err := io.Copy(h, bytes.NewReader(block)); err != nil {
+		log.Fatal(err)
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
