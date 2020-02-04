@@ -54,41 +54,55 @@ func (ac *AcDrive) Upload(filename string) error {
 	_, fileSize := GetFileSize(filename)
 	blocks, err := ReadChunks(filename)
 
-	var blockMetadatas []types.Block
+	blockMetadatas := make([]types.Block, len(blocks))
 
 	if err != nil {
 		return err
 	}
 
+	const cocurrentNum = 8
+	requests := make(chan bool, cocurrentNum)
+	var wg sync.WaitGroup
+
 	for index, block := range blocks {
-		fullBlock := append(BlockHeader(block), block...)
-		blockSha1 := util.CalculateBlockSha1(block)
-		fullBlockSha1 := util.CalculateBlockSha1(fullBlock)
+		requests <- true
+		wg.Add(1)
 
-		params := &types.AcfunUploadImageRequest{
-			Token: token,
-			Id:    "WU_FILE_0",
-			Name:  fmt.Sprintf("%s.bmp", fullBlockSha1),
-			Type:  "image/bmp",
-			Size:  fmt.Sprintf("%d", len(fullBlock)),
-			Key:   fmt.Sprintf("bfs/album/%s.bmp", fullBlockSha1),
-		}
+		go func(index int, block []byte, wg *sync.WaitGroup, isOccupied chan bool) {
+			defer wg.Done()
+			fullBlock := append(BlockHeader(block), block...)
+			blockSha1 := util.CalculateBlockSha1(block)
+			fullBlockSha1 := util.CalculateBlockSha1(fullBlock)
 
-		err, url := UploadBlock(params, fullBlock)
-		if err != nil {
-			return err
-		}
+			params := &types.AcfunUploadImageRequest{
+				Token: token,
+				Id:    "WU_FILE_0",
+				Name:  fmt.Sprintf("%s.bmp", fullBlockSha1),
+				Type:  "image/bmp",
+				Size:  fmt.Sprintf("%d", len(fullBlock)),
+				Key:   fmt.Sprintf("bfs/album/%s.bmp", fullBlockSha1),
+			}
+			err, url := UploadBlock(params, fullBlock)
+			if err != nil {
+				// return err
+				fmt.Printf("上传出错了%s", err)
+			}
 
-		blockMetadata := types.Block{
-			Size: int64(len(block)),
-			Url:  url,
-			Sha1: blockSha1,
-		}
+			blockMetadata := types.Block{
+				Size: int64(len(block)),
+				Url:  url,
+				Sha1: blockSha1,
+			}
 
-		blockMetadatas = append(blockMetadatas, blockMetadata)
-
-		fmt.Printf("分片%d上传成功\n", index+1)
+			blockMetadatas[index] = blockMetadata
+			fmt.Printf("分片%d上传成功\n", index+1)
+			<-isOccupied
+		}(index, block, &wg, requests)
 	}
+
+	fmt.Println("等待所有分片上传完成")
+	close(requests)
+	wg.Wait()
 
 	now := time.Now()
 
