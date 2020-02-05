@@ -36,7 +36,6 @@ func downloadBlock(blocks []types.Block, index int, file *os.File, isOccupied ch
 	_, err = file.WriteAt(content, int64(offset))
 
 	<-isOccupied
-	// log.Printf("分块%d/%d下载完毕\n", index+1, len(blocks))
 	wg.Done()
 
 	bar.AddCompletedSize(int(block.Size))
