@@ -45,28 +45,6 @@ func GetResponse(url string) (error, []byte) {
 	return nil, body
 }
 
-func GetMetadata(url string) (error, types.Metadata) {
-	re := regexp.MustCompile(`[a-fA-F0-9]{40}`)
-	res := re.FindAllString(url, -1)
-	if len(res) == 0 {
-		return errors.New("输入的地址不合法"), types.Metadata{}
-	}
-
-	requestUrl := fmt.Sprintf("https://imgs.aixifan.com/bfs/album/%s.bmp", res[0])
-	err, fullMetadata := GetResponse(requestUrl)
-	if err != nil {
-		return err, types.Metadata{}
-	}
-	metadataContent := fullMetadata[62:]
-
-	var metadata types.Metadata
-	err = json.Unmarshal(metadataContent, &metadata)
-	if err != nil {
-		return err, types.Metadata{}
-	}
-	return nil, metadata
-}
-
 func GetOffset(blocks []types.Block, index uint64) int64 {
 	var i, offset int64 = 0, 0
 	for ; i < int64(index); i++ {
@@ -98,4 +76,45 @@ func CalculateBlockSha1(block []byte) string {
 	}
 
 	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func GetMetadata(url string) (error, types.Metadata) {
+	re := regexp.MustCompile(`fd(.+)://([a-fA-F0-9]{32,})`)
+	res := re.FindStringSubmatch(url)
+	if len(res) == 0 {
+		return errors.New("输入的地址不合法"), types.Metadata{}
+	}
+
+	var formatUrl string
+	driveType := res[1]
+
+	switch driveType {
+	// acfun
+	case "00":
+		formatUrl = "https://imgs.aixifan.com/bfs/album/%s.bmp"
+		break
+		// bilibili
+	case "01":
+		formatUrl = ""
+		break
+		// baijiahao
+	case "02":
+		formatUrl = "https://pic.rmb.bdstatic.com/%s.bmp"
+		break
+	}
+	requestUrl := fmt.Sprintf(formatUrl, res[2])
+
+	err, fullMetadata := GetResponse(requestUrl)
+	if err != nil {
+		return err, types.Metadata{}
+	}
+	metadataContent := fullMetadata[62:]
+
+	var metadata types.Metadata
+
+	err = json.Unmarshal(metadataContent, &metadata)
+	if err != nil {
+		return err, types.Metadata{}
+	}
+	return nil, metadata
 }

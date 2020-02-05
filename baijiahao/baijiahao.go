@@ -1,13 +1,10 @@
-package acdrive
+package baijiahao
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
-	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -16,17 +13,12 @@ import (
 	"github.com/phbai/FreeDrive/util"
 )
 
-type AcDrive struct {
+type Baijiahao struct {
 }
 
-func (ac *AcDrive) Upload(filename string) error {
+func (bjh *Baijiahao) Upload(filename string) error {
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		return errors.New(filename + "文件不存在")
-	}
-
-	err, token := GetUpToken()
-	if err != nil {
-		return err
 	}
 
 	_, fileSize := GetFileSize(filename)
@@ -54,17 +46,11 @@ func (ac *AcDrive) Upload(filename string) error {
 			blockSha1 := util.CalculateBlockSha1(block)
 			fullBlockSha1 := util.CalculateBlockSha1(fullBlock)
 
-			params := &types.AcfunUploadImageRequest{
-				Token: token,
-				Id:    "WU_FILE_0",
-				Name:  fmt.Sprintf("%s.bmp", fullBlockSha1),
-				Type:  "image/bmp",
-				Size:  fmt.Sprintf("%d", len(fullBlock)),
-				Key:   fmt.Sprintf("bfs/album/%s.bmp", fullBlockSha1),
+			params := &types.BaijiahaoUploadImageRequest{
+				Name: fmt.Sprintf("%s.bmp", fullBlockSha1),
 			}
 			err, url := UploadBlock(params, fullBlock)
 			if err != nil {
-				// return err
 				fmt.Printf("上传出错了%s", err)
 			}
 
@@ -98,13 +84,8 @@ func (ac *AcDrive) Upload(filename string) error {
 	fullMetadataBlock := append(BlockHeader(metadataBytes), metadataBytes...)
 	fullMetadataBlockSha1 := util.CalculateBlockSha1(fullMetadataBlock)
 
-	params := &types.AcfunUploadImageRequest{
-		Token: token,
-		Id:    "WU_FILE_0",
-		Name:  fmt.Sprintf("%s.bmp", fullMetadataBlockSha1),
-		Type:  "image/bmp",
-		Size:  fmt.Sprintf("%d", len(fullMetadataBlock)),
-		Key:   fmt.Sprintf("bfs/album/%s.bmp", fullMetadataBlockSha1),
+	params := &types.BaijiahaoUploadImageRequest{
+		Name: fmt.Sprintf("%s.bmp", fullMetadataBlockSha1),
 	}
 
 	err, url := UploadBlock(params, fullMetadataBlock)
@@ -116,7 +97,7 @@ func (ac *AcDrive) Upload(filename string) error {
 	return nil
 }
 
-func (ac *AcDrive) Download(url string) error {
+func (bjh *Baijiahao) Download(url string) error {
 	mutex := sync.Mutex{}
 	err, metadata := util.GetMetadata(url)
 
@@ -166,47 +147,12 @@ func (ac *AcDrive) Download(url string) error {
 	return nil
 }
 
-func (ac *AcDrive) Login(username string, password string) error {
-	data := url.Values{}
-	data.Set("username", username)
-	data.Set("password", password)
-	data.Set("key", "")
-	data.Set("captcha", "")
-
-	response, err := http.PostForm("https://id.app.acfun.cn/rest/web/login/signin", data)
-
-	if err != nil {
-		return err
-	}
-
-	defer response.Body.Close()
-
-	cookies := response.Cookies()
-
-	cookie := types.AcfunLoginCookie{
-		AcPasstoken: cookies[0].Value,
-		AuthKey:     cookies[1].Value,
-		AcUsername:  cookies[2].Value,
-		AcPostHint:  cookies[3].Value,
-		AcUserImg:   cookies[4].Value,
-	}
-
-	res, err := json.MarshalIndent(cookie, "", "  ")
-
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile("cookies.json", res, 0644)
-	if err != nil {
-		return err
-	}
-
-	log.Println("登录成功")
+func (bjh *Baijiahao) Login(username string, password string) error {
+	log.Println("不需要login")
 	return nil
 }
 
-func (ac *AcDrive) Info(url string) error {
+func (bjh *Baijiahao) Info(url string) error {
 	err, metadata := util.GetMetadata(url)
 
 	if err != nil {

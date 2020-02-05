@@ -1,8 +1,7 @@
-package acdrive
+package baijiahao
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -15,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"sync"
 
 	"github.com/phbai/FreeDrive/types"
@@ -43,12 +41,6 @@ func AddCookie(req *http.Request) error {
 	if err != nil {
 		return err
 	}
-
-	req.AddCookie(&http.Cookie{Name: "acPasstoken", Value: cookie.AcPasstoken})
-	req.AddCookie(&http.Cookie{Name: "auth_key", Value: cookie.AuthKey})
-	req.AddCookie(&http.Cookie{Name: "ac_username", Value: cookie.AcUsername})
-	req.AddCookie(&http.Cookie{Name: "acPostHint", Value: cookie.AcPostHint})
-	req.AddCookie(&http.Cookie{Name: "ac_userimg", Value: cookie.AcUserImg})
 
 	req.Header.Add("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36")
 
@@ -127,23 +119,17 @@ func ReadChunks(filename string) ([][]byte, error) {
 	return res, nil
 }
 
-func UploadBlock(params *types.AcfunUploadImageRequest, block []byte) (error, string) {
-	url := "https://upload.qiniup.com"
+func UploadBlock(params *types.BaijiahaoUploadImageRequest, block []byte) (error, string) {
+	url := "https://baijiahao.baidu.com/builderinner/api/content/file/upload"
 	payload := &bytes.Buffer{}
 	writer := multipart.NewWriter(payload)
 	path := params.Name
-	part1, errFile1 := writer.CreateFormFile("file", filepath.Base(path))
+	part1, errFile1 := writer.CreateFormFile("media", filepath.Base(path))
 	_, errFile1 = io.Copy(part1, bytes.NewReader(block))
 
 	if errFile1 != nil {
 		return errFile1, ""
 	}
-	_ = writer.WriteField("token", params.Token)
-	_ = writer.WriteField("id", params.Id)
-	_ = writer.WriteField("name", params.Name)
-	_ = writer.WriteField("type", params.Type)
-	_ = writer.WriteField("size", params.Size)
-	_ = writer.WriteField("key", params.Key)
 	err := writer.Close()
 	if err != nil {
 		return err, ""
@@ -168,56 +154,14 @@ func UploadBlock(params *types.AcfunUploadImageRequest, block []byte) (error, st
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
 
-	var result types.AcfunUploadImageResponse
+	var result types.BaijiahaoUploadImageResponse
 
 	err = json.Unmarshal(body, &result)
 
 	if err != nil {
 		return err, ""
 	}
-	return nil, fmt.Sprintf("https://imgs.aixifan.com/%s", result.Key)
-}
-
-func GetUpToken() (error, string) {
-	req, err := http.NewRequest("GET", "https://www.acfun.cn/v2/user/content/upToken", nil)
-
-	AddCookie(req)
-
-	if err != nil {
-		return err, ""
-	}
-
-	req.Header.Add("devicetype", "7")
-	// req.Header.Add("Referer", "https://t.bilibili.com/")
-
-	resp, err := client.Do(req)
-	defer resp.Body.Close()
-
-	if err != nil {
-		return err, ""
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-
-	if err != nil {
-		return err, ""
-	}
-
-	var tokenObject types.AcfunGetToken
-	err = json.Unmarshal(body, &tokenObject)
-
-	if err != nil {
-		return err, ""
-	}
-
-	token, err := base64.URLEncoding.DecodeString(tokenObject.Vdata.Uptoken)
-
-	if err != nil {
-		return err, ""
-	}
-
-	upToken := strings.Replace(string(token), "null:", "", -1)
-	return nil, upToken
+	return nil, result.Ret.OrgUrl
 }
 
 func GetFileSize(filename string) (error, int64) {
@@ -240,8 +184,8 @@ func GetFileSize(filename string) (error, int64) {
 }
 
 func FormatUrl(url string) string {
-	re := regexp.MustCompile(`[a-fA-F0-9]{40}`)
-	return fmt.Sprintf("fd00://%s", re.FindString(url))
+	re := regexp.MustCompile(`[a-fA-F0-9]{32}`)
+	return fmt.Sprintf("fd02://%s", re.FindString(url))
 }
 
 func DownloadBlock(blocks []types.Block, index int, file *os.File, isOccupied chan bool, wg *sync.WaitGroup, mutex sync.Mutex, bar *util.ProgressBar) error {

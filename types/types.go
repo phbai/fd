@@ -47,3 +47,20 @@ type AcfunUploadImageRequest struct {
 	Size  string
 	Key   string
 }
+
+type BaijiahaoUploadImageRequest struct {
+	Name string
+}
+
+type BaijiahaoUploadImageResponse struct {
+	ErrMsg string `json:"errmsg"`
+	Ret    BaijiahaoUploadImageResponseReturn
+}
+
+type BaijiahaoUploadImageResponseReturn struct {
+	OrgUrl string `json:"org_url"`
+	Mime   string `json:"mime"`
+	Name   string `json:"name"`
+	Size   int    `json:"size"`
+	Type   string `json:"type"`
+}

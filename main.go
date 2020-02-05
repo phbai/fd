@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/phbai/FreeDrive/acdrive"
+	"github.com/phbai/FreeDrive/baijiahao"
 )
 
 func main() {
-	acDrive := &acdrive.AcDrive{};
-	fd := FreeDrive{acDrive};
+	baijiahao := &baijiahao.Baijiahao{}
+	fd := FreeDrive{baijiahao}
 	fd.Run()
 }
