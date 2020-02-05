@@ -167,7 +167,6 @@ func (ac *AcDrive) Download(url string) error {
 
 	var wg sync.WaitGroup
 
-	beforeDownload := time.Now()
 	const cocurrentNum = 8
 	requests := make(chan bool, cocurrentNum)
 
@@ -180,10 +179,6 @@ func (ac *AcDrive) Download(url string) error {
 	}
 	close(requests)
 	wg.Wait()
-
-	timeElapsed := float64(time.Since(beforeDownload)) / float64(time.Second)
-	speed := float64(metadata.Size) / float64(timeElapsed)
-	log.Printf("%s (%s) 下载完毕, 用时%.2f秒, 平均速度%s/s\n", metadata.Filename, util.FormatSize(metadata.Size), timeElapsed, util.FormatSize(int64(speed)))
 
 	newHash := util.CalculateFileSha1(metadata.Filename)
 
