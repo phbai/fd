@@ -19,7 +19,7 @@ import (
 type AcDrive struct {
 }
 
-func downloadBlock(blocks []types.Block, index int, file *os.File, isOccupied chan bool, wg *sync.WaitGroup, mutex sync.Mutex) error {
+func downloadBlock(blocks []types.Block, index int, file *os.File, isOccupied chan bool, wg *sync.WaitGroup, mutex sync.Mutex, bar *util.ProgressBar) error {
 	block := blocks[index]
 	offset := util.GetOffset(blocks, uint64(index))
 
@@ -36,8 +36,10 @@ func downloadBlock(blocks []types.Block, index int, file *os.File, isOccupied ch
 	_, err = file.WriteAt(content, int64(offset))
 
 	<-isOccupied
-	log.Printf("分块%d/%d下载完毕\n", index+1, len(blocks))
+	// log.Printf("分块%d/%d下载完毕\n", index+1, len(blocks))
 	wg.Done()
+
+	bar.AddCompletedSize(int(block.Size))
 	return nil
 }
 
@@ -63,6 +65,8 @@ func (ac *AcDrive) Upload(filename string) error {
 	const cocurrentNum = 8
 	requests := make(chan bool, cocurrentNum)
 	var wg sync.WaitGroup
+
+	progressBar := util.NewProgressBar(int(fileSize), filename)
 
 	for index, block := range blocks {
 		requests <- true
@@ -95,12 +99,11 @@ func (ac *AcDrive) Upload(filename string) error {
 			}
 
 			blockMetadatas[index] = blockMetadata
-			fmt.Printf("分片%d上传成功\n", index+1)
+			progressBar.AddCompletedSize(len(block))
 			<-isOccupied
 		}(index, block, &wg, requests)
 	}
 
-	fmt.Println("等待所有分片上传完成")
 	close(requests)
 	wg.Wait()
 
@@ -138,6 +141,7 @@ func (ac *AcDrive) Upload(filename string) error {
 }
 
 func (ac *AcDrive) Download(url string) error {
+
 	mutex := sync.Mutex{}
 	err, metadata := util.GetMetadata(url)
 
@@ -168,10 +172,12 @@ func (ac *AcDrive) Download(url string) error {
 	const cocurrentNum = 8
 	requests := make(chan bool, cocurrentNum)
 
+	progressBar := util.NewProgressBar(int(metadata.Size), metadata.Filename)
+
 	for i := 0; i < len(metadata.Blocks); i++ {
 		requests <- true
 		wg.Add(1)
-		go downloadBlock(metadata.Blocks, i, f, requests, &wg, mutex)
+		go downloadBlock(metadata.Blocks, i, f, requests, &wg, mutex, progressBar)
 	}
 	close(requests)
 	wg.Wait()
@@ -185,7 +191,7 @@ func (ac *AcDrive) Download(url string) error {
 	if newHash == metadata.Sha1 {
 		log.Println("文件校验通过")
 	} else {
-		log.Println("文件校验未通过")
+		log.Println("文件校验未通过,请重新下载")
 	}
 	return nil
 }
