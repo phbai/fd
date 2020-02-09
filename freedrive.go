@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/phbai/FreeDrive/drive"
+	"github.com/phbai/fd/drive"
 	"github.com/urfave/cli/v2"
 )
 

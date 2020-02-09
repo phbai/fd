@@ -14,7 +14,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/phbai/FreeDrive/types"
+	"github.com/phbai/fd/types"
 )
 
 func FormatTime(timestamp uint64) string {

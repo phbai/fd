@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/phbai/FreeDrive/baijiahao"
+	"github.com/phbai/fd/baijiahao"
 )
 
 func main() {

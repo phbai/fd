@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/phbai/FreeDrive/types"
-	"github.com/phbai/FreeDrive/util"
+	"github.com/phbai/fd/types"
+	"github.com/phbai/fd/util"
 )
 
 type Baijiahao struct {
