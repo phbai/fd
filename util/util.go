@@ -79,7 +79,7 @@ func CalculateBlockSha1(block []byte) string {
 }
 
 func GetMetadata(url string) (error, types.Metadata) {
-	re := regexp.MustCompile(`fd(.+)://([a-fA-F0-9]{32,})`)
+	re := regexp.MustCompile(`fd(.+)://([a-zA-Z0-9]{32,})`)
 	res := re.FindStringSubmatch(url)
 	if len(res) == 0 {
 		return errors.New("输入的地址不合法"), types.Metadata{}
@@ -101,7 +101,11 @@ func GetMetadata(url string) (error, types.Metadata) {
 	case "02":
 		formatUrl = "https://pic.rmb.bdstatic.com/%s.bmp"
 		break
+	case "03":
+		formatUrl = "https://ae01.alicdn.com/kf/%s.bmp"
+		break
 	}
+
 	requestUrl := fmt.Sprintf(formatUrl, res[2])
 
 	err, fullMetadata := GetResponse(requestUrl)

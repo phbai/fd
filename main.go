@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/phbai/fd/baijiahao"
+	"github.com/phbai/fd/ali"
 )
 
 func main() {
-	baijiahao := &baijiahao.Baijiahao{}
-	fd := FreeDrive{baijiahao}
+	ali := &ali.Ali{}
+	fd := FreeDrive{ali}
 	fd.Run()
 }
